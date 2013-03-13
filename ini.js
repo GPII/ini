@@ -33,7 +33,7 @@ function encode (obj, section, options, superSection) {
       //if we're in subsection and they're allowed, add extra set of brackets
       sectionHeader = "[" + safe(section) + "]"; 
     } else {
-      sectionHeader =  safe(section+"."+nk);
+      sectionHeader =  safe(section);
     }
     out = "[" + sectionHeader + "]" + eol + out  
   }
