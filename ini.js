@@ -33,14 +33,14 @@ function encode (obj, section, options, superSection) {
       //if we're in subsection and they're allowed, add extra set of brackets
       sectionHeader = "[" + safe(section) + "]"; 
     } else {
-      sectionHeader =  safe(section);
+      sectionHeader =  safe((superSection ? superSection + "." : "") + section);
     }
     out = "[" + sectionHeader + "]" + eol + out  
   }
 
   children.forEach(function (k, _, __) {
     var nk = dotSplit(k).join('\\.')
-    var child = encode(obj[k], nk, options, section)
+    var child = encode(obj[k], (superSection ? section + "." : "") + nk, options, superSection ? superSection : section)
     if (out.length && child.length) {
       out += eol
     }
