@@ -5,7 +5,7 @@ exports.stringify = exports.encode = encode
 exports.safe = safe
 exports.unsafe = unsafe
 
-var eol = process.platform === "win32" ? "\r\n" : "\n"
+var eol = process.platform === "win32" ? "\n" : "\n"
 
 function encode (obj, section, options, superSection) {
   var children = []
@@ -69,7 +69,7 @@ function decode (str, options) {
     , subRe = /^\s*\[\[(.*)\]\]\s*/i
     , lines = str.split(/[\r\n]+/g)
     , section = null
-    , comment = (options && options.allowNumberSignComments) ? /^\s*[;#]/ : /^\s*;/
+    , comment = (options && options.allowHashComments) ? /^\s*[;#]/ : /^\s*;/
     , allowSubSections = options && options.allowSubSections;    
     
   lines.forEach(function (line, _, __) {
@@ -77,13 +77,13 @@ function decode (str, options) {
     var match = line.match(re)
     if (!match) return
     if (match[1] !== undefined) {
-      section = unsafe(match[1])
+      section = unsafe(match[1]).replace(/\\\./g, '.'); //unsafe and unescape dots
       p = out[section] = out[section] || {}
       return
     } else if (allowSubSections) {
       var subMatch = match[2].match(subRe);
       if (subMatch && subMatch[1]) {
-        var subsection = unsafe(subMatch[1]);
+        var subsection = unsafe(subMatch[1]).replace(/\\\./g, '.'); //unsafe and unescape dots
         p = out[section][subsection] = out[section][subsection] || {};
         return;
       }}
@@ -114,27 +114,6 @@ function decode (str, options) {
     else {
       p[key] = value
     }
-  })
-
-  // {a:{y:1},"a.b":{x:2}} --> {a:{y:1,b:{x:2}}}
-  // use a filter to return the keys that have to be deleted.
-  Object.keys(out).filter(function (k, _, __) {
-    if (!out[k] || typeof out[k] !== "object" || Array.isArray(out[k])) return false
-    // see if the parent section is also an object.
-    // if so, add it to that, and mark this one for deletion
-    var parts = dotSplit(k)
-      , p = out
-      , l = parts.pop()
-      , nl = l.replace(/\\\./g, '.')
-    parts.forEach(function (part, _, __) {
-      if (!p[part] || typeof p[part] !== "object") p[part] = {}
-      p = p[part]
-    })
-    if (p === out && nl === l) return false
-    p[nl] = out[k]
-    return true
-  }).forEach(function (del, _, __) {
-    delete out[del]
   })
 
   return out
