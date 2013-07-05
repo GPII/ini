@@ -24,9 +24,9 @@ var i = require("../")
             + ' \\"a val\\", b: { c: { e: \\"this [value]'
             + '\\" } } } }\\""\n"[]" = a square?\n'
             + 'cr[] = four\ncr[] = eight\n\n'
-            +'[a.b.c]\ne = 1\n'
+            +'[a\\.b\\.c]\ne = 1\n'
             + 'j = 2\n\n[x\\.y\\.z]\nx.y.z = xyz\n\n'
-            + '[x\\.y\\.z.a\\.b\\.c]\na.b.c = abc\n'
+            + '[x\\.y\\.z\\.a\\.b\\.c]\na.b.c = abc\n'
             + 'nocomment = this\\; this is not a comment\n'
   , expectD =
     { o: 'p',
@@ -41,14 +41,15 @@ var i = require("../")
          e: '{ o: p, a: { av: a val, b: { c: { e: "this [value]" } } } }',
          j: '"{ o: "p", a: { av: "a val", b: { c: { e: "this [value]" } } } }"',
          "[]": "a square?",
-         cr: ['four', 'eight'],
-         b: { c: { e: '1', j: '2' } } },
+         cr: ['four', 'eight']
+       },
+      'a.b.c': { e: '1', j: '2' },
       'x.y.z': {
-        'x.y.z': 'xyz',
-        'a.b.c': {
-          'a.b.c': 'abc',
-          'nocomment': 'this\; this is not a comment'
-        }
+        'x.y.z': 'xyz'
+      },
+      'x.y.z.a.b.c': {
+        'a.b.c': 'abc',
+        'nocomment': 'this\; this is not a comment'
       }
     }
 

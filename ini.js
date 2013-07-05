@@ -5,11 +5,12 @@ exports.stringify = exports.encode = encode
 exports.safe = safe
 exports.unsafe = unsafe
 
-var eol = process.platform === "win32" ? "\r\n" : "\n"
+var eol = process.platform === "win32" ? "\n" : "\n"
 
-function encode (obj, section) {
+function encode (obj, section, options, superSection) {
   var children = []
     , out = ""
+    , sectionHeader;
 
   Object.keys(obj).forEach(function (k, _, __) {
     var val = obj[k]
@@ -26,12 +27,20 @@ function encode (obj, section) {
   })
 
   if (section && out.length) {
-    out = "[" + safe(section) + "]" + eol + out
+    if (!superSection) {
+      sectionHeader = safe(section);
+    } else if (options && options.allowSubSections) {
+      //if we're in subsection and they're allowed, add extra set of brackets
+      sectionHeader = "[" + safe(section) + "]"; 
+    } else {
+      sectionHeader =  safe((superSection ? superSection + "." : "") + section);
+    }
+    out = "[" + sectionHeader + "]" + eol + out  
   }
 
   children.forEach(function (k, _, __) {
     var nk = dotSplit(k).join('\\.')
-    var child = encode(obj[k], (section ? section + "." : "") + nk)
+    var child = encode(obj[k], (superSection ? section + "." : "") + nk, options, superSection ? superSection : section)
     if (out.length && child.length) {
       out += eol
     }
@@ -50,25 +59,34 @@ function dotSplit (str) {
          })
 }
 
-function decode (str) {
+function decode (str, options) {
   var out = {}
     , p = out
     , section = null
     , state = "START"
            // section     |key = value
     , re = /^\[([^\]]*)\]$|^([^=]+)(=(.*))?$/i
+    , subRe = /^\s*\[\[(.*)\]\]\s*/i
     , lines = str.split(/[\r\n]+/g)
     , section = null
-
+    , comment = (options && options.allowHashComments) ? /^\s*[;#]/ : /^\s*;/
+    , allowSubSections = options && options.allowSubSections;    
+    
   lines.forEach(function (line, _, __) {
-    if (!line || line.match(/^\s*;/)) return
+    if (!line || line.match(comment)) return
     var match = line.match(re)
     if (!match) return
     if (match[1] !== undefined) {
-      section = unsafe(match[1])
+      section = unsafe(match[1]).replace(/\\\./g, '.'); //unsafe and unescape dots
       p = out[section] = out[section] || {}
       return
-    }
+    } else if (allowSubSections) {
+      var subMatch = match[2].match(subRe);
+      if (subMatch && subMatch[1]) {
+        var subsection = unsafe(subMatch[1]).replace(/\\\./g, '.'); //unsafe and unescape dots
+        p = out[section][subsection] = out[section][subsection] || {};
+        return;
+      }}
     var key = unsafe(match[2])
       , value = match[3] ? unsafe((match[4] || "")) : true
     switch (value) {
@@ -96,27 +114,6 @@ function decode (str) {
     else {
       p[key] = value
     }
-  })
-
-  // {a:{y:1},"a.b":{x:2}} --> {a:{y:1,b:{x:2}}}
-  // use a filter to return the keys that have to be deleted.
-  Object.keys(out).filter(function (k, _, __) {
-    if (!out[k] || typeof out[k] !== "object" || Array.isArray(out[k])) return false
-    // see if the parent section is also an object.
-    // if so, add it to that, and mark this one for deletion
-    var parts = dotSplit(k)
-      , p = out
-      , l = parts.pop()
-      , nl = l.replace(/\\\./g, '.')
-    parts.forEach(function (part, _, __) {
-      if (!p[part] || typeof p[part] !== "object") p[part] = {}
-      p = p[part]
-    })
-    if (p === out && nl === l) return false
-    p[nl] = out[k]
-    return true
-  }).forEach(function (del, _, __) {
-    delete out[del]
   })
 
   return out
